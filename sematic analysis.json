@@ -1,0 +1,354 @@
+{
+  "name": "sematic analysis",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -368,
+        -64
+      ],
+      "id": "9607c68e-91c3-4e44-9e34-81b3df79c796",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "MrYh06xsuRp6FImq",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-1.5-pro",
+          "mode": "list",
+          "cachedResultName": "models/gemini-1.5-pro"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an AI assistant specialized in analyzing customer support messages.\n\nTask: Analyze the following support message text and identify the primary emotion expressed (anger, confusion, delight, neutral) and a brief sentiment summary (positive, negative, neutral).\n\nIf the sentiment summary is \"negative\", set \"spikeDetected\" to true; otherwise, set it to false.\n\nMessage:\n\"{{ $json.snippet }}\"\n\nReply ONLY in JSON format with these fields:\n{\n  \"emotion\": \"<anger, confusion, delight, neutral>\",\n  \"sentiment_summary\": \"<positive, negative, neutral>\",\n  \"spikeDetected\": true or false\n}\n"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -192,
+        16
+      ],
+      "id": "c6a496ef-bc76-402c-8de4-4b2f378f6d50",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "4MzUX0NxP6NDC7PZ",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1B1KujtaK2Opd9vTvbnzETA_QO7uCiQmvXiOo8-juFSc/edit?usp=sharing",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Emotion": "={{ JSON.parse($json.content.parts[0].text).emotion }}\n",
+            "timestamp": "={{ new Date().toLocaleString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) + '–' + new Date().toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Kolkata' }) }}\n",
+            "Sender Email": "={{ $('Gmail Trigger').item.json.From }}",
+            "spikeDetected": "={{ JSON.parse($json.content.parts[0].text).spikeDetected }}",
+            "sentiment_summary": "={{ JSON.parse($json.content.parts[0].text).sentiment_summary}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Sender Email",
+              "displayName": "Sender Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Emotion",
+              "displayName": "Emotion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "sentiment_summary",
+              "displayName": "sentiment_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "spikeDetected",
+              "displayName": "spikeDetected",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "NegativeCount",
+              "displayName": "NegativeCount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        112,
+        0
+      ],
+      "id": "c48677f5-df53-464a-b7cf-106621f84738",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "437I8kUypKD6oyHk",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C09BWMMLAMS",
+          "mode": "list",
+          "cachedResultName": "all-techtribe-solutions"
+        },
+        "text": "=🚨 Negative Sentiment Alert 🚨\n\nEmotion: {{ $json.Emotion }}\nSender: {{ $('Gmail Trigger').item.json.From }}\nSubject: {{ $('Gmail Trigger').item.json.Subject }}\nTime & Date: {{ new Date().toLocaleString('en-US', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:true }) }}\n\nA negative or concerning emotion was detected in a recent message. Please review and take proper action.\nthis generated by semantic system.\n",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        736,
+        96
+      ],
+      "id": "48578d70-bb83-461b-8951-802ab61531b3",
+      "name": "Send a message",
+      "webhookId": "788a8458-a1ba-4938-a311-30742fc6f2a0",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "pr33RYhSaebQOILd",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "okmanoj7093@gmail.com",
+        "subject": "Negative Sentiment Spike Detected – Immediate Attention Required🚨",
+        "message": "=<p><strong>Timestamp:</strong> {{ $json.timestamp }}</p>\n<p><strong>Sender Email:</strong> {{ $('Gmail Trigger').item.json.From }}</p>\n<p><strong>Emotion:</strong> {{ $json.Emotion }}</p>\n<p><strong>Sentiment Summary:</strong> {{ $json.sentement_summary }}</p>\n\n<p>A negative sentiment spike has been detected in a recent support message. Please review the situation and respond promptly to address the customer's concern.</p>\n\n<p>Best regards,<br>\nCustomer Sentiment Monitoring System</p>\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        736,
+        -96
+      ],
+      "id": "92412267-424a-47cf-af94-7c924af5ee01",
+      "name": "Send a message1",
+      "webhookId": "b9a285e9-4ac8-4585-af34-c10f3a210e12",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "kgrsg4J9GlZuQRV1",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "699faa17-cfb8-4f97-a1e8-5dbd4bb3b39e",
+              "leftValue": "={{ $json.spikeDetected }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        48
+      ],
+      "id": "741933df-5304-4956-be1e-ad7cf9d4fb8f",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.From }}",
+        "subject": "Our Apologies for the Inconvenience Caused",
+        "message": "=<p>Dear {{ $json.From }},</p>\n\n<p>We sincerely apologize for any inconvenience you have experienced with our service. We understand how important your concerns are and want to assure you that your message has been received and forwarded to our concerned team for immediate review.</p>\n\n<p>Resolving this issue is our top priority. We appreciate your patience while our team investigates your case and works towards a solution.</p>\n\n<p>If you have additional information or questions, please reply to this email and we will do our best to assist you further.</p>\n\n<p>Thank you for bringing this to our attention.<br>\nBest regards,<br>\nCustomer Service Team</p>\n\n<hr>\n<p style=\"font-size:small;color:gray;\">This is an automated response. Our team will follow up with you soon.</p>\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -160,
+        -192
+      ],
+      "id": "6b3e5ac5-087a-47ef-b059-763c416e6008",
+      "name": "Send a message2",
+      "webhookId": "3c4765cd-7fe0-4156-9760-84d1c8e43980",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "MrYh06xsuRp6FImq",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "Q0oehIsvKrwhnl3c"
+  },
+  "versionId": "f290e5f0-6c15-4b99-a1cb-ee286d929c1e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "036ae789da3d7c8372fcf030d5db6297be953e5232e64d015e1ae4f93dc69d77"
+  },
+  "id": "Q0oehIsvKrwhnl3c",
+  "tags": []
+}
